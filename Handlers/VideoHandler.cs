@@ -117,6 +117,7 @@ public static class VideoHandler
     
     public static void Render()
     {
+        
         var baseDir = AppContext.BaseDirectory;
         var characters = CharacterHandler.Load("Characters");
         var root = Path.GetFullPath(Path.Combine(baseDir, @"..\..\.."));
@@ -138,16 +139,26 @@ public static class VideoHandler
                 20f
             );
             
-            var outputPath = Directory.CreateDirectory(Path.Combine(root, "output"));
-            var output = $"{outputPath}\\output_{index}.webm";
+            
+            string audioPath = AudioHandler.GenerateBlipTrack(
+                line.Text,
+                character.Blip,
+                20f
+            );
 
-            RawVideoPipeSource videoFramesSource = new(frames) { FrameRate = 30 };
+            var output = $"output_{index}.webm";
+
+            var videoSource = new RawVideoPipeSource(frames) { FrameRate = 30 };
 
             Console.WriteLine($"[RENDER] Rendering {output}...");
 
             FFMpegArguments
-                .FromPipeInput(videoFramesSource)
-                .OutputToFile(output, true, options => options.WithVideoCodec("libvpx-vp9"))
+                .FromPipeInput(videoSource)
+                .AddFileInput(audioPath)
+                .OutputToFile(output, true, options => options
+                    .WithVideoCodec("libvpx-vp9")
+                    .WithAudioCodec("libopus")
+                    .ForceFormat("webm"))
                 .ProcessSynchronously();
 
             index++;

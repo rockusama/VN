@@ -31,7 +31,8 @@ public class CharacterHandler
                 Name = name,
                 SpritePath = Path.Combine(dir, "sprite.jpg"),
                 DgBoxPath = Path.Combine(dir, "dialogue_box.png"),
-                Color = "#"+File.ReadAllText(Path.Combine(dir, "color.txt")).Trim()
+                Color = "#"+File.ReadAllText(Path.Combine(dir, "color.txt")).Trim(),
+                Blip = Path.Combine(dir,"blip.wav")
             };
 
             character.Sprite = SKBitmap.Decode(character.SpritePath);
