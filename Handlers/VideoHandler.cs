@@ -48,22 +48,22 @@ public static class VideoHandler
     }
     
     private static IEnumerable<IVideoFrame> CreateFrames(
-        int count,
         int width,
         int height,
         Character character,
-        List<DialogueLine> lines,
-        double fps)
+        string text,
+        double fps,
+        float charsPerSecond)
     {
         using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), 32);
 
         var charColor = SKColor.Parse(character.Color);
-        var sprite = SKBitmap.FromImage(SKImage.FromEncodedData(character.SpritePath));
-        var bg = SKBitmap.FromImage(SKImage.FromEncodedData(character.DgBoxPath));
-        
+        var sprite = character.Sprite;
+        var bg = character.DialogueBox;
+
         int newWidth = (int)(sprite.Width * height / sprite.Height);
-        int newHeight = (int)(sprite.Height * height / sprite.Height);
-        
+        int newHeight = height;
+
         var resized = sprite.Resize(
             new SKImageInfo(newWidth, newHeight),
             SKFilterQuality.High
@@ -73,50 +73,29 @@ public static class VideoHandler
         textPaint.Color = charColor;
         textPaint.TextAlign = SKTextAlign.Left;
 
-        var lineIndex = 0;
-        
-        string currentText = "";
-        int startFrame = 0;
-        float charsPerSecond = 20f;
-        
+        int totalFrames = (int)Math.Ceiling(text.Length / charsPerSecond * fps)+60; // +1 so it wont disappear right after typing
+
         using SKBitmap bmp = new(width, height);
         using SKCanvas canvas = new SKCanvas(bmp);
-        for (var i = 0; i < count; i++)
+
+        for (int i = 0; i < totalFrames; i++)
         {
-            var currentTime = i / fps;
-
-            while (lineIndex + 1 < lines.Count &&
-                   lines[lineIndex + 1].Timecode.TotalSeconds <= currentTime)
-                lineIndex++;
-
-            var text = lineIndex < lines.Count
-                ? lines[lineIndex].Text
-                : string.Empty;
-
-            if (text != currentText)
-            {
-                currentText = text;
-                startFrame = i;
-            }
-
-            int localFrame = i - startFrame;
-            float elapsed = localFrame / (float)fps;
+            float elapsed = i / (float)fps;
 
             int charsToShow = (int)(elapsed * charsPerSecond);
-            charsToShow = Math.Clamp(charsToShow, 0, currentText.Length);
+            charsToShow = Math.Clamp(charsToShow, 0, text.Length);
 
-            string visibleText = currentText[..charsToShow];
+            string visibleText = text[..charsToShow];
 
             canvas.Clear(SKColors.Transparent);
             canvas.DrawBitmap(bg, new SKPoint(0, 0));
             canvas.DrawBitmap(resized, new SKPoint(Otstup_sleva, 0));
-            
-            canvas.DrawText(character.Name, resized.Width+200, bmp.Height * 0.2f, textPaint);
+
+            canvas.DrawText(character.Name, resized.Width + 200, bmp.Height * 0.2f, textPaint);
+
             float textX = resized.Width + 100;
             float textY = bmp.Height * 0.36f;
-
             float maxTextWidth = width - textX - 50;
-
             float lineHeight = textPaint.TextSize * 1.4f;
 
             var wrappedLines = WrapText(visibleText, textPaint, maxTextWidth);
@@ -133,41 +112,45 @@ public static class VideoHandler
 
             yield return new SKBitmapFrame(bmp);
         }
+        
     }
     
     public static void Render()
     {
         var baseDir = AppContext.BaseDirectory;
-
         var characters = CharacterHandler.Load("Characters");
-        var character = characters["Мариса Кирисаме"];
-
         var root = Path.GetFullPath(Path.Combine(baseDir, @"..\..\.."));
         var dialogues = ScriptHandler.Parse(Path.Combine(root, "script.txt"));
 
-        var frames = CreateFrames(
-            300,
-            1920,
-            400,
-            character,
-            dialogues,
-            30
-        );
+        int index = 0;
 
-        RawVideoPipeSource videoFramesSource = new(frames) { FrameRate = 30 };
-        try
+        foreach (var line in dialogues)
         {
-            Console.WriteLine("[RENDER] Rendering...");
-            var success = FFMpegArguments
+            if (!characters.TryGetValue(line.Character, out var character))
+                continue;
+
+            var frames = CreateFrames(
+                1920,
+                400,
+                character,
+                line.Text,
+                30,
+                20f
+            );
+            
+            var outputPath = Directory.CreateDirectory(Path.Combine(root, "output"));
+            var output = $"{outputPath}\\output_{index}.webm";
+
+            RawVideoPipeSource videoFramesSource = new(frames) { FrameRate = 30 };
+
+            Console.WriteLine($"[RENDER] Rendering {output}...");
+
+            FFMpegArguments
                 .FromPipeInput(videoFramesSource)
-                .OutputToFile("output.webm", true, options => options.WithVideoCodec("libvpx-vp9"))
+                .OutputToFile(output, true, options => options.WithVideoCodec("libvpx-vp9"))
                 .ProcessSynchronously();
-            Console.WriteLine("[RENDER] Rendered.");
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"[RENDER]{e.Message}");
-            throw;
+
+            index++;
         }
     }
 }

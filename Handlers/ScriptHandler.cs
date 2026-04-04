@@ -3,7 +3,6 @@ namespace VN.Handlers;
 
 public class DialogueLine
 {
-    public TimeSpan Timecode { get; set; }
     public string Text { get; set; }
     public string Character { get; set; }
 }
@@ -11,7 +10,7 @@ public class DialogueLine
 public class ScriptHandler
 {
     private static Regex regex = new Regex(
-        @"\[(?<time>.*?)\]\s*(?<char>[^-:]+)\s*[-:]\s*(?<text>.*)",
+        @"^(?<char>[^-:]+)\s*[-:]\s*(?<text>.*)",
         RegexOptions.Compiled
     );
 
@@ -30,12 +29,11 @@ public class ScriptHandler
 
             result.Add(new DialogueLine
             {
-                Timecode = TimeSpan.Parse(match.Groups["time"].Value),
                 Character = match.Groups["char"].Value.Trim(),
                 Text = match.Groups["text"].Value.Trim()
             });
         }
 
-        return result.OrderBy(x => x.Timecode).ToList();
+        return result;
     }
 }
