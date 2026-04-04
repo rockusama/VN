@@ -1,0 +1,9 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+/script.txt
+to-do.txt
+input.mp4
+Characters
