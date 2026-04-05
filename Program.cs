@@ -1,9 +1,8 @@
-﻿
-using VN.Handlers;
+﻿using VN.Handlers;
 
-class Program
+internal class Program
 {
-    static void Main()
+    private static void Main()
     {
         VideoHandler.Render();
     }

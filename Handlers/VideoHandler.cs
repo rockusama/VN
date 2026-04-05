@@ -4,12 +4,10 @@ using SkiaSharp;
 
 namespace VN.Handlers;
 
-
-
 public static class VideoHandler
 {
     private const int Otstup_sleva = 30;
- 
+
     private static List<string> WrapText(string text, SKPaint paint, float maxWidth)
     {
         var lines = new List<string>();
@@ -17,7 +15,7 @@ public static class VideoHandler
         foreach (var rawLine in text.Split('\n'))
         {
             var words = rawLine.Split(' ');
-            string currentLine = "";
+            var currentLine = "";
 
             foreach (var word in words)
             {
@@ -25,7 +23,7 @@ public static class VideoHandler
                     ? word
                     : currentLine + " " + word;
 
-                float width = paint.MeasureText(testLine);
+                var width = paint.MeasureText(testLine);
 
                 if (width <= maxWidth)
                 {
@@ -46,7 +44,7 @@ public static class VideoHandler
 
         return lines;
     }
-    
+
     private static IEnumerable<IVideoFrame> CreateFrames(
         int width,
         int height,
@@ -55,75 +53,77 @@ public static class VideoHandler
         double fps,
         float charsPerSecond)
     {
-        using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), 32);
+        using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), 48);
+        using SKFont charFont = new(SKTypeface.FromFamilyName("underdog"), 72);
 
         var charColor = SKColor.Parse(character.Color);
-        var sprite = character.Sprite;
-        var bg = character.DialogueBox;
-
-        int newWidth = (int)(sprite.Width * height / sprite.Height);
-        int newHeight = height;
-
-        var resized = sprite.Resize(
-            new SKImageInfo(newWidth, newHeight),
-            SKFilterQuality.High
-        );
-
         using SKPaint textPaint = new(textFont);
         textPaint.Color = charColor;
         textPaint.TextAlign = SKTextAlign.Left;
+        
+        using SKPaint charPaint = new(charFont);
+        charPaint.Color = charColor;
+        charPaint.TextAlign = SKTextAlign.Center;
+        
+        var sprite = character.Sprite;
+        var bg = character.DialogueBox;
 
-        int totalFrames = (int)Math.Ceiling(text.Length / charsPerSecond * fps)+60; // +1 so it wont disappear right after typing
+        var resizedWidth = sprite.Width * height / sprite.Height;
+        var resizedHeight = height;
+
+        var resized = sprite.Resize(
+            new SKImageInfo(resizedWidth, resizedHeight),
+            SKFilterQuality.High
+        );
+        
+        var totalFrames =
+            (int)Math.Ceiling(text.Length / charsPerSecond * fps) + 60; // +60 so it wont disappear right after typing
 
         using SKBitmap bmp = new(width, height);
-        using SKCanvas canvas = new SKCanvas(bmp);
+        using var canvas = new SKCanvas(bmp);
 
-        for (int i = 0; i < totalFrames; i++)
+        for (var i = 0; i < totalFrames; i++)
         {
-            float elapsed = i / (float)fps;
+            var elapsed = i / (float)fps;
 
-            int charsToShow = (int)(elapsed * charsPerSecond);
+            var charsToShow = (int)(elapsed * charsPerSecond);
             charsToShow = Math.Clamp(charsToShow, 0, text.Length);
 
-            string visibleText = text[..charsToShow];
+            var visibleText = text[..charsToShow];
 
             canvas.Clear(SKColors.Transparent);
             canvas.DrawBitmap(bg, new SKPoint(0, 0));
             canvas.DrawBitmap(resized, new SKPoint(Otstup_sleva, 0));
 
-            canvas.DrawText(character.Name, resized.Width + 200, bmp.Height * 0.2f, textPaint);
+            canvas.DrawText(character.Name, resized.Width + 400, bmp.Height * 0.2f, charPaint);
 
             float textX = resized.Width + 100;
-            float textY = bmp.Height * 0.36f;
-            float maxTextWidth = width - textX - 50;
-            float lineHeight = textPaint.TextSize * 1.4f;
+            var textY = bmp.Height * 0.36f;
+            var maxTextWidth = width - textX - 50;
+            var lineHeight = textPaint.TextSize * 1.4f;
 
             var wrappedLines = WrapText(visibleText, textPaint, maxTextWidth);
 
-            for (int li = 0; li < wrappedLines.Count; li++)
-            {
+            for (var li = 0; li < wrappedLines.Count; li++)
                 canvas.DrawText(
                     wrappedLines[li],
                     textX,
                     textY + li * lineHeight,
                     textPaint
                 );
-            }
 
             yield return new SKBitmapFrame(bmp);
         }
-        
     }
-    
+
     public static void Render()
     {
-        
         var baseDir = AppContext.BaseDirectory;
         var characters = CharacterHandler.Load("Characters");
         var root = Path.GetFullPath(Path.Combine(baseDir, @"..\..\.."));
         var dialogues = ScriptHandler.Parse(Path.Combine(root, "script.txt"));
 
-        int index = 0;
+        var index = 0;
 
         foreach (var line in dialogues)
         {
@@ -138,9 +138,9 @@ public static class VideoHandler
                 30,
                 20f
             );
-            
-            
-            string audioPath = AudioHandler.GenerateBlipTrack(
+
+
+            var audioPath = AudioHandler.GenerateBlipTrack(
                 line.Text,
                 character.Blip,
                 20f

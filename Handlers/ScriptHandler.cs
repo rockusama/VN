@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+
 namespace VN.Handlers;
 
 public class DialogueLine
@@ -9,7 +10,7 @@ public class DialogueLine
 
 public class ScriptHandler
 {
-    private static Regex regex = new Regex(
+    private static readonly Regex regex = new(
         @"^(?<char>[^-:]+)\s*[-:]\s*(?<text>.*)",
         RegexOptions.Compiled
     );
