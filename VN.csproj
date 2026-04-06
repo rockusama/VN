@@ -8,10 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Folder Include="libs\"/>
-    </ItemGroup>
-
-    <ItemGroup>
         <None Include="Characters\**\*">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
@@ -26,12 +22,8 @@
     <ItemGroup>
         <PackageReference Include="FFMpegCore" Version="5.4.0"/>
         <PackageReference Include="NAudio" Version="2.3.0"/>
-        <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260330"/>
-        <PackageReference Include="OpenCvSharp4.Extensions" Version="4.13.0.20260330"/>
-        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302"/>
         <PackageReference Include="SkiaSharp" Version="3.119.2"/>
         <PackageReference Include="SkiaSharp.TextBlocks" Version="3.0.1"/>
-        <PackageReference Include="Topten.RichTextKit" Version="0.4.160-preview"/>
     </ItemGroup>
 
 </Project>

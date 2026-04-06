@@ -27,7 +27,9 @@ public static class VideoHandler
                 var width = paint.MeasureText(testLine);
 
                 if (width <= maxWidth)
+                {
                     currentLine = testLine;
+                }
                 else
                 {
                     if (!string.IsNullOrEmpty(currentLine))
@@ -76,24 +78,22 @@ public static class VideoHandler
         );
 
         var timeline = TimelineHandler.BuildTimeline(text, charsPerSecond);
-        double totalDuration = timeline.Count > 0 ? timeline[^1] + 0.5 : 1;
-        int totalFrames = (int)(totalDuration * fps);
+        var totalDuration = timeline.Count > 0 ? timeline[^1] + 0.5 : 1;
+        var totalFrames = (int)(totalDuration * fps);
 
-        for (int i = 0; i < totalFrames; i++)
+        for (var i = 0; i < totalFrames; i++)
         {
             using var bmp = new SKBitmap(width, height);
             using var canvas = new SKCanvas(bmp);
 
-            float elapsed = i / (float)fps;
+            var elapsed = i / (float)fps;
 
-            int charsToShow = 0;
-            for (int j = 0; j < timeline.Count; j++)
-            {
+            var charsToShow = 0;
+            for (var j = 0; j < timeline.Count; j++)
                 if (timeline[j] <= elapsed)
                     charsToShow++;
                 else
                     break;
-            }
 
             var visibleText = text[..Math.Min(charsToShow, text.Length)];
 
@@ -104,13 +104,13 @@ public static class VideoHandler
             canvas.DrawText(character.Name, resized.Width + 400, bmp.Height * 0.2f, charPaint);
 
             float textX = resized.Width + 100;
-            float textY = bmp.Height * 0.36f;
-            float maxWidth = width - textX - 50;
-            float lineHeight = textPaint.TextSize * 1.4f;
+            var textY = bmp.Height * 0.36f;
+            var maxWidth = width - textX - 50;
+            var lineHeight = textPaint.TextSize * 1.4f;
 
             var lines = WrapText(visibleText, textPaint, maxWidth);
 
-            for (int li = 0; li < lines.Count; li++)
+            for (var li = 0; li < lines.Count; li++)
                 canvas.DrawText(lines[li], textX, textY + li * lineHeight, textPaint);
 
             yield return new SKBitmapFrame(bmp.Copy());
@@ -124,7 +124,7 @@ public static class VideoHandler
         var root = Path.GetFullPath(Path.Combine(baseDir, @"..\..\.."));
         var dialogues = ScriptHandler.Parse(Path.Combine(root, "script.txt"));
 
-        int index = 0;
+        var index = 0;
 
         foreach (var line in dialogues)
         {
@@ -144,7 +144,7 @@ public static class VideoHandler
             var output = $"output_{index}.webm";
 
             var videoSource = new RawVideoPipeSource(frames) { FrameRate = 30 };
-            
+
             Console.WriteLine($"[RENDER] {output}");
 
             FFMpegArguments

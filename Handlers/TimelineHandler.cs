@@ -11,10 +11,12 @@ public class TimelineHandler
         {
             timeline.Add(currentTime);
 
-            if (char.IsWhiteSpace(c) || c == ',')
+            switch (c)
             {
-                currentTime += 1.0 / charsPerSecond;
-                continue;
+                case '.': currentTime += 0.25; break;
+                case ',': currentTime += 0.15; break;
+                case '!':
+                case '?': currentTime += 0.3; break;
             }
 
             if (".!?".Contains(c))
@@ -23,11 +25,10 @@ public class TimelineHandler
                 continue;
             }
 
-            double mult = "aeiouаеёиоуыэюя".Contains(char.ToLowerInvariant(c))
+            var mult = "aeiouаеёиоуыэюя".Contains(char.ToLowerInvariant(c))
                 ? 1.2
                 : 0.8;
-
-            currentTime += (1.0 / charsPerSecond) * mult;
+            currentTime += 1.0 / charsPerSecond * mult;
         }
 
         return timeline;

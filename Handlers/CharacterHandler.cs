@@ -42,13 +42,6 @@ public class CharacterHandler
         return dict;
     }
 
-    public static SKColor ColorConverter(string color)
-    {
-        var t2 = SKColor.Parse(color);
-        Console.WriteLine(t2);
-        return t2;
-    }
-
     private static bool IsImage(string Path)
     {
         return Path.EndsWith(".png") || Path.EndsWith(".jpg") || Path.EndsWith(".jpeg");
