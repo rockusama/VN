@@ -3,63 +3,64 @@ using NAudio.Wave.SampleProviders;
 
 namespace VN.Handlers;
 
+/// <summary>
+/// KNOWN ISSUES
+/// DOES NOT SKIP EMOTICONS LIKE :3
+/// 
+/// </summary>
+
 public class AudioHandler
 {
+    private static bool IsPunctuation(char c)
+    {
+        return ".!?".Contains(char.ToLowerInvariant(c));
+    }
+    
+    private static bool IsUnpronounceable(char c)
+    {
+        return "@#&%".Contains(char.ToLowerInvariant(c));
+    }
+    
     public static string GenerateBlipTrack(
         string text,
         string blipPath,
-        float charsPerSecond)
+        List<double> timeline)
     {
-        var sampleRate = 44100;
+        int sampleRate = 44100;
         var rand = new Random();
-
-        // load base blip
-        using var reader = new AudioFileReader(blipPath);
-        var blipProvider = reader.ToSampleProvider();
 
         List<float> output = new();
 
-        double currentTime = 0;
-
-        foreach (var c in text)
+        for (int idx = 0; idx < text.Length; idx++)
         {
-            // skip spaces
-            if (char.IsWhiteSpace(c))
-            {
-                currentTime += 1.0 / charsPerSecond;
+            char c = text[idx];
+            double time = timeline[idx];
+
+            if (char.IsWhiteSpace(c) 
+                || c == ',' 
+                || IsPunctuation(c) 
+                || IsUnpronounceable(c)
+                )
                 continue;
-            }
 
-            // extra pause for punctuation
-            if (c == '.' || c == ',' || c == '!' || c == '?')
-            {
-                currentTime += 0.15;
-                continue;
-            }
+            float pitch = 0.85f + (float)rand.NextDouble() * 0.3f;
 
-            // random pitch factor
-            var pitch = 0.85f + (float)rand.NextDouble() * 0.3f;
-
-            // reload reader per blip (important)
-            using var r = new AudioFileReader(blipPath);
-            var provider = r.ToSampleProvider();
-
-            // apply pitch via speed change
+            using var reader = new AudioFileReader(blipPath);
+            var provider = reader.ToSampleProvider();
             var pitched = new WdlResamplingSampleProvider(provider, (int)(sampleRate * pitch));
 
-            var startSample = (int)(currentTime * sampleRate);
+            int startSample = (int)(time * sampleRate);
 
-            // ensure buffer size
             while (output.Count < startSample)
                 output.Add(0f);
 
-            var buffer = new float[1024];
+            float[] buffer = new float[1024];
             int read;
-
-            var writeIndex = startSample;
+            int writeIndex = startSample;
 
             while ((read = pitched.Read(buffer, 0, buffer.Length)) > 0)
-                for (var i = 0; i < read; i++)
+            {
+                for (int i = 0; i < read; i++)
                 {
                     if (writeIndex >= output.Count)
                         output.Add(buffer[i]);
@@ -68,17 +69,15 @@ public class AudioHandler
 
                     writeIndex++;
                 }
-
-            currentTime += 1.0 / charsPerSecond;
+            }
         }
 
-        var outPath = Path.GetTempFileName() + ".wav";
+        string path = Path.GetTempFileName() + ".wav";
 
-        using var writer = new WaveFileWriter(outPath, new WaveFormat(sampleRate, 1));
+        using var writer = new WaveFileWriter(path, new WaveFormat(sampleRate, 1));
+        foreach (var s in output)
+            writer.WriteSample(Math.Clamp(s, -1f, 1f));
 
-        foreach (var sample in output)
-            writer.WriteSample(Math.Clamp(sample, -1f, 1f));
-
-        return outPath;
+        return path;
     }
 }

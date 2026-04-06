@@ -6,7 +6,8 @@ namespace VN.Handlers;
 
 public static class VideoHandler
 {
-    private const int Otstup_sleva = 30;
+    private const int Otstup_sleva = 0;
+    private const int Text_size = 36;
 
     private static List<string> WrapText(string text, SKPaint paint, float maxWidth)
     {
@@ -26,9 +27,7 @@ public static class VideoHandler
                 var width = paint.MeasureText(testLine);
 
                 if (width <= maxWidth)
-                {
                     currentLine = testLine;
-                }
                 else
                 {
                     if (!string.IsNullOrEmpty(currentLine))
@@ -53,43 +52,50 @@ public static class VideoHandler
         double fps,
         float charsPerSecond)
     {
-        using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), 48);
+        using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), Text_size);
         using SKFont charFont = new(SKTypeface.FromFamilyName("underdog"), 72);
 
-        var charColor = SKColor.Parse(character.Color);
-        using SKPaint textPaint = new(textFont);
-        textPaint.Color = charColor;
-        textPaint.TextAlign = SKTextAlign.Left;
-        
-        using SKPaint charPaint = new(charFont);
-        charPaint.Color = charColor;
-        charPaint.TextAlign = SKTextAlign.Center;
-        
+        using SKPaint textPaint = new(textFont)
+        {
+            Color = SKColor.Parse(character.Color),
+            TextAlign = SKTextAlign.Left
+        };
+
+        using SKPaint charPaint = new(charFont)
+        {
+            Color = SKColor.Parse(character.Color),
+            TextAlign = SKTextAlign.Center
+        };
+
         var sprite = character.Sprite;
         var bg = character.DialogueBox;
 
-        var resizedWidth = sprite.Width * height / sprite.Height;
-        var resizedHeight = height;
-
         var resized = sprite.Resize(
-            new SKImageInfo(resizedWidth, resizedHeight),
+            new SKImageInfo(sprite.Width * height / sprite.Height, height),
             SKFilterQuality.High
         );
-        
-        var totalFrames =
-            (int)Math.Ceiling(text.Length / charsPerSecond * fps) + 60; // +60 so it wont disappear right after typing
 
-        using SKBitmap bmp = new(width, height);
-        using var canvas = new SKCanvas(bmp);
+        var timeline = TimelineHandler.BuildTimeline(text, charsPerSecond);
+        double totalDuration = timeline.Count > 0 ? timeline[^1] + 0.5 : 1;
+        int totalFrames = (int)(totalDuration * fps);
 
-        for (var i = 0; i < totalFrames; i++)
+        for (int i = 0; i < totalFrames; i++)
         {
-            var elapsed = i / (float)fps;
+            using var bmp = new SKBitmap(width, height);
+            using var canvas = new SKCanvas(bmp);
 
-            var charsToShow = (int)(elapsed * charsPerSecond);
-            charsToShow = Math.Clamp(charsToShow, 0, text.Length);
+            float elapsed = i / (float)fps;
 
-            var visibleText = text[..charsToShow];
+            int charsToShow = 0;
+            for (int j = 0; j < timeline.Count; j++)
+            {
+                if (timeline[j] <= elapsed)
+                    charsToShow++;
+                else
+                    break;
+            }
+
+            var visibleText = text[..Math.Min(charsToShow, text.Length)];
 
             canvas.Clear(SKColors.Transparent);
             canvas.DrawBitmap(bg, new SKPoint(0, 0));
@@ -98,21 +104,16 @@ public static class VideoHandler
             canvas.DrawText(character.Name, resized.Width + 400, bmp.Height * 0.2f, charPaint);
 
             float textX = resized.Width + 100;
-            var textY = bmp.Height * 0.36f;
-            var maxTextWidth = width - textX - 50;
-            var lineHeight = textPaint.TextSize * 1.4f;
+            float textY = bmp.Height * 0.36f;
+            float maxWidth = width - textX - 50;
+            float lineHeight = textPaint.TextSize * 1.4f;
 
-            var wrappedLines = WrapText(visibleText, textPaint, maxTextWidth);
+            var lines = WrapText(visibleText, textPaint, maxWidth);
 
-            for (var li = 0; li < wrappedLines.Count; li++)
-                canvas.DrawText(
-                    wrappedLines[li],
-                    textX,
-                    textY + li * lineHeight,
-                    textPaint
-                );
+            for (int li = 0; li < lines.Count; li++)
+                canvas.DrawText(lines[li], textX, textY + li * lineHeight, textPaint);
 
-            yield return new SKBitmapFrame(bmp);
+            yield return new SKBitmapFrame(bmp.Copy());
         }
     }
 
@@ -123,39 +124,33 @@ public static class VideoHandler
         var root = Path.GetFullPath(Path.Combine(baseDir, @"..\..\.."));
         var dialogues = ScriptHandler.Parse(Path.Combine(root, "script.txt"));
 
-        var index = 0;
+        int index = 0;
 
         foreach (var line in dialogues)
         {
             if (!characters.TryGetValue(line.Character, out var character))
                 continue;
 
-            var frames = CreateFrames(
-                1920,
-                400,
-                character,
-                line.Text,
-                30,
-                20f
-            );
+            var timeline = TimelineHandler.BuildTimeline(line.Text, 20f);
 
+            var frames = CreateFrames(1920, 400, character, line.Text, 30, 20f);
 
             var audioPath = AudioHandler.GenerateBlipTrack(
                 line.Text,
                 character.Blip,
-                20f
+                timeline
             );
 
             var output = $"output_{index}.webm";
 
             var videoSource = new RawVideoPipeSource(frames) { FrameRate = 30 };
-
-            Console.WriteLine($"[RENDER] Rendering {output}...");
+            
+            Console.WriteLine($"[RENDER] {output}");
 
             FFMpegArguments
                 .FromPipeInput(videoSource)
                 .AddFileInput(audioPath)
-                .OutputToFile(output, true, options => options
+                .OutputToFile(output, true, opt => opt
                     .WithVideoCodec("libvpx-vp9")
                     .WithAudioCodec("libopus")
                     .ForceFormat("webm"))
@@ -193,6 +188,14 @@ internal class SKBitmapFrame : IVideoFrame, IDisposable
 
     public Task SerializeAsync(Stream pipe, CancellationToken token)
     {
-        return pipe.WriteAsync(Source.Bytes, 0, Source.Bytes.Length, token);
+        try
+        {
+            return pipe.WriteAsync(Source.Bytes, 0, Source.Bytes.Length, token);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
     }
 }
