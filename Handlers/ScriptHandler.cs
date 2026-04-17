@@ -4,8 +4,8 @@ namespace VN.Handlers;
 
 public class DialogueLine
 {
-    public string Text { get; set; }
-    public string Character { get; set; }
+    public required string Text { get; set; }
+    public required string Character { get; set; }
 }
 
 public class ScriptHandler

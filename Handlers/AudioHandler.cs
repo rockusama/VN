@@ -9,10 +9,6 @@ namespace VN.Handlers;
 /// </summary>
 public class AudioHandler
 {
-    // def. 0.85f and 1.2f
-    private const float MIN_PITCH = 0.8f;
-    private const float MAX_PITCH = 1.2f;
-
     private static bool IsUnpronounceable(char c)
     {
         return @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains(char.ToLowerInvariant(c));
@@ -26,6 +22,10 @@ public class AudioHandler
         var sampleRate = 44100;
         var rand = new Random();
 
+        var minPitch = Config.Read<float>("minimum_pitch");
+        var maxPitch = Config.Read<float>("maximum_pitch");
+        var pitchModifier = Config.Read<float>("pitch_modifier");
+
         List<float> output = new();
 
         for (var idx = 0; idx < text.Length; idx++)
@@ -38,8 +38,8 @@ public class AudioHandler
                )
                 continue;
 
-            var pitch = MIN_PITCH + (float)rand.NextDouble() * 0.3f;
-            pitch = Math.Clamp(pitch, MIN_PITCH, MAX_PITCH);
+            var pitch = minPitch + (float)rand.NextDouble() * pitchModifier;
+            pitch = Math.Clamp(pitch, minPitch, maxPitch);
 
             using var reader = new AudioFileReader(blipPath);
             var provider = reader.ToSampleProvider();

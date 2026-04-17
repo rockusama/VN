@@ -5,9 +5,7 @@ namespace VN.Handlers;
 public class Character
 {
     public string Name { get; set; }
-    public string DgBoxPath { get; set; }
     public string Blip { get; set; }
-    public string SpritePath { get; set; } // fanta блять
     public string Color { get; set; }
 
     public SKBitmap Sprite { get; set; }
@@ -27,14 +25,12 @@ public class CharacterHandler
             var character = new Character
             {
                 Name = name,
-                SpritePath = Path.Combine(dir, "sprite.jpg"),
-                DgBoxPath = Path.Combine(dir, "dialogue_box.png"),
                 Color = "#" + File.ReadAllText(Path.Combine(dir, "color.txt")).Trim(),
-                Blip = Path.Combine(dir, "blip.wav")
+                Blip = Path.Combine(dir, "blip.wav"),
+                Sprite = SKBitmap.Decode(Path.Combine(dir, "sprite.jpg")),
+                DialogueBox = SKBitmap.Decode(Path.Combine(dir, "dialogue_box.png"))
             };
 
-            character.Sprite = SKBitmap.Decode(character.SpritePath);
-            character.DialogueBox = SKBitmap.Decode(character.DgBoxPath);
 
             dict[name] = character;
         }

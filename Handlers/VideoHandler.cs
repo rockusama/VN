@@ -7,7 +7,6 @@ namespace VN.Handlers;
 public static class VideoHandler
 {
     private const int Otstup_sleva = 0;
-    private const int Text_size = 36;
 
     private static List<string> WrapText(string text, SKPaint paint, float maxWidth)
     {
@@ -54,8 +53,11 @@ public static class VideoHandler
         double fps,
         float charsPerSecond)
     {
-        using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), Text_size);
-        using SKFont charFont = new(SKTypeface.FromFamilyName("underdog"), 72);
+        var textSize = Config.Read<int>("text_size");
+        var charTextSize = Config.Read<int>("char_text_size");
+
+        using SKFont textFont = new(SKTypeface.FromFamilyName("underdog"), textSize);
+        using SKFont charFont = new(SKTypeface.FromFamilyName("underdog"), charTextSize);
 
         using SKPaint textPaint = new(textFont)
         {
@@ -105,13 +107,34 @@ public static class VideoHandler
 
             float textX = resized.Width + 100;
             var textY = bmp.Height * 0.36f;
-            var maxWidth = width - textX - 50;
+            var maxTextWidth = width - textX - 50;
             var lineHeight = textPaint.TextSize * 1.4f;
 
-            var lines = WrapText(visibleText, textPaint, maxWidth);
+            var wrappedLines = WrapText(visibleText, textPaint, maxTextWidth);
 
-            for (var li = 0; li < lines.Count; li++)
-                canvas.DrawText(lines[li], textX, textY + li * lineHeight, textPaint);
+            var globalCharIndex = 0;
+
+            for (var li = 0; li < wrappedLines.Count; li++)
+            {
+                var x = textX;
+                var y = textY + li * lineHeight;
+
+                foreach (var c in wrappedLines[li])
+                {
+                    // time when this char appeared
+                    var charTime = globalCharIndex / charsPerSecond;
+
+                    var t = elapsed - charTime;
+
+                    var offsetY = t > 0 ? Bounce(t) : 0;
+                    canvas.DrawText(
+                        c.ToString(), x, y - offsetY, textPaint
+                    );
+
+                    x += textPaint.MeasureText(c.ToString());
+                    globalCharIndex++;
+                }
+            }
 
             yield return new SKBitmapFrame(bmp.Copy());
         }
@@ -119,21 +142,22 @@ public static class VideoHandler
 
     public static void Render()
     {
-        var baseDir = AppContext.BaseDirectory;
         var characters = CharacterHandler.Load("Characters");
-        var root = Path.GetFullPath(Path.Combine(baseDir, @"..\..\.."));
-        var dialogues = ScriptHandler.Parse(Path.Combine(root, "script.txt"));
+        var dialogues = ScriptHandler.Parse(Program.PathHelper.FromRoot("script.txt"));
 
         var index = 0;
+        var width = Config.Read<int>("width");
+        var height = Config.Read<int>("height");
+        var charsPerSecond = Config.Read<float>("characters_per_second");
 
         foreach (var line in dialogues)
         {
             if (!characters.TryGetValue(line.Character, out var character))
                 continue;
 
-            var timeline = TimelineHandler.BuildTimeline(line.Text, 20f);
+            var timeline = TimelineHandler.BuildTimeline(line.Text, charsPerSecond);
 
-            var frames = CreateFrames(1920, 400, character, line.Text, 30, 20f);
+            var frames = CreateFrames(width, height, character, line.Text, 30, charsPerSecond);
 
             var audioPath = AudioHandler.GenerateBlipTrack(
                 line.Text,
@@ -145,19 +169,32 @@ public static class VideoHandler
 
             var videoSource = new RawVideoPipeSource(frames) { FrameRate = 30 };
 
-            Console.WriteLine($"[RENDER] {output}");
-
-            FFMpegArguments
-                .FromPipeInput(videoSource)
-                .AddFileInput(audioPath)
-                .OutputToFile(output, true, opt => opt
-                    .WithVideoCodec("libvpx-vp9")
-                    .WithAudioCodec("libopus")
-                    .ForceFormat("webm"))
-                .ProcessSynchronously();
+            if (Config.Read<bool>("render_one_file") && index < 1 || !Config.Read<bool>("render_one_file"))
+            {
+                Console.WriteLine($"[RENDER] {output}...");
+                FFMpegArguments
+                    .FromPipeInput(videoSource)
+                    .AddFileInput(audioPath)
+                    .OutputToFile(output, true, opt => opt
+                        .WithVideoCodec("libvpx-vp9")
+                        .WithAudioCodec("libopus")
+                        .ForceFormat("webm"))
+                    .ProcessSynchronously();
+                Console.WriteLine($"[RENDER] Done.");
+                
+            }
 
             index++;
         }
+    }
+
+    private static float Bounce(float t)
+    {
+        var amplitude = Config.Read<float>("amplitude");
+        var frequency = Config.Read<float>("frequency");
+        var decay = Config.Read<float>("decay");
+
+        return (float)(Math.Sin(t * frequency) * amplitude * Math.Exp(-t * decay));
     }
 }
 

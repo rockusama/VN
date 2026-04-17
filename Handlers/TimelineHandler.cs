@@ -15,14 +15,8 @@ public class TimelineHandler
             {
                 case '.': currentTime += 0.25; break;
                 case ',': currentTime += 0.15; break;
-                case '!':
+                case '!': currentTime += 0.3; break;
                 case '?': currentTime += 0.3; break;
-            }
-
-            if (".!?".Contains(c))
-            {
-                currentTime += 0.25;
-                continue;
             }
 
             var mult = "aeiouаеёиоуыэюя".Contains(char.ToLowerInvariant(c))
