@@ -6,14 +6,14 @@ namespace VN.Handlers;
 /// <summary>
 ///     KNOWN ISSUES
 ///     DOES NOT SKIP EMOTICONS LIKE :3
-///		DO WE NEED TO MAKE A BREATHING?
+///     DO WE NEED TO MAKE A BREATHING?
 /// </summary>
 public class AudioHandler {
-	public static  bool  IsUnpronounceable( char c ) => @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains( char.ToLowerInvariant( c ) );
-	private static float minPitch      = Config.Read<float>( "minimum_pitch" );
-	private static float maxPitch      = Config.Read<float>( "maximum_pitch" );
-	private static float pitchModifier = Config.Read<float>( "pitch_modifier" );
-	
+	private static readonly float minPitch      = Config.Read<float>( "minimum_pitch" );
+	private static readonly float maxPitch      = Config.Read<float>( "maximum_pitch" );
+	private static readonly float pitchModifier = Config.Read<float>( "pitch_modifier" );
+	public static           bool  IsUnpronounceable( char c ) => @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains( char.ToLowerInvariant( c ) );
+
 	public static string GenerateBlipTrack(
 		string text ,
 		string blipPath ,
@@ -22,7 +22,7 @@ public class AudioHandler {
 		var sampleRate = 44100;
 		var rand = new Random();
 		var output = new List<float>();
-		
+
 		for ( var idx = 0 ; idx < text.Length ; idx++ ) {
 			var c = text[idx];
 			var time = timeline[idx];

@@ -4,12 +4,12 @@ public class TimelineHandler {
 	public static List<double> BuildTimeline( string text , float charsPerSecond ) {
 		var timeline = new List<double>();
 		double currentTime = 0;
-		
+
 		foreach ( var c in text ) {
 			timeline.Add( currentTime );
 
-			var breathTime = currentTime; 
-			
+			var breathTime = currentTime;
+
 			switch ( c ) {
 				case '.': currentTime += 0.25; break;
 				case ',': currentTime += 0.15; break;

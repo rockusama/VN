@@ -11,51 +11,9 @@ public class VideoHandler {
 	private static readonly int         charTextSize    = Config.Read<int>( "char_text_size" );
 	private static readonly SKTextAlign textAlignment   = Config.Read<SKTextAlign>( "text_alignment" );
 	private static readonly SKTextAlign charAlignment   = Config.Read<SKTextAlign>( "char_text_alignment" );
-	private static readonly int         videoWidth           = Config.Read<int>( "width" );
-	private static readonly int         videoHeight          = Config.Read<int>( "height" );
+	private static readonly int         videoWidth      = Config.Read<int>( "width" );
+	private static readonly int         videoHeight     = Config.Read<int>( "height" );
 	private static readonly float       _charsPerSecond = Config.Read<float>( "characters_per_second" );
-
-	private static class VideoHelpers {
-		public static List<string> WrapText( string text , SKPaint paint , float maxWidth ) {
-			var lines = new List<string>();
-
-			foreach ( var rawLine in text.Split( '\n' ) ) {
-				var words = rawLine.Split( ' ' );
-				var currentLine = "";
-
-				foreach ( var word in words ) {
-					var testLine = string.IsNullOrEmpty( currentLine )
-						? word
-						:currentLine + " " + word;
-
-					var linewidth = paint.MeasureText( testLine );
-
-					if ( linewidth <= maxWidth )
-						currentLine = testLine;
-					else {
-						if ( !string.IsNullOrEmpty( currentLine ) )
-							lines.Add( currentLine );
-
-						currentLine = word;
-					}
-				}
-
-				if ( !string.IsNullOrEmpty( currentLine ) )
-					lines.Add( currentLine );
-			}
-
-			return lines;
-		}
-
-		public static float Bounce( float t ) {
-			var amplitude = Config.Read<float>( "amplitude" );
-			var frequency = Config.Read<float>( "frequency" );
-			var decay = Config.Read<float>( "decay" );
-
-			var returned = (float)( Math.Sin( t * frequency ) * amplitude * Math.Exp( -t * decay ) );
-			return returned;
-		}
-	}
 
 
 	private static IEnumerable<IVideoFrame> CreateFrames(
@@ -114,7 +72,7 @@ public class VideoHandler {
 			var maxTextWidth = width - textX - 50;
 			var lineHeight = textFont.Size * 1.4f;
 
-			var wrappedLines = VideoHelpers.WrapText( visibleText , textPaint , maxTextWidth );
+			var wrappedLines = Helper.WrapText( visibleText , textPaint , maxTextWidth );
 
 			var globalCharIndex = 0;
 
@@ -125,16 +83,16 @@ public class VideoHandler {
 				foreach ( var c in wrappedLines[li] ) {
 					var charTime = globalCharIndex < timeline.Count
 						? timeline[globalCharIndex]
-						: 0f;
+						:0f;
 
 					var t = elapsed - charTime;
-					if (t < 0) t = 0;
+					if ( t < 0 ) t = 0;
 
-					var offsetY = VideoHelpers.Bounce((float)t);
-					
+					var offsetY = Helper.Bounce( (float)t );
+
 					// Console.WriteLine( ( y - offsetY ).ToString("0.000000") + " " + c); //
 					canvas.DrawText(
-						c.ToString() , x , !AudioHandler.IsUnpronounceable(c)? y - offsetY :y , textAlignment , textFont , textPaint
+						c.ToString() , x , !AudioHandler.IsUnpronounceable( c )? y - offsetY:y , textAlignment , textFont , textPaint
 					);
 
 					x += textFont.MeasureText( c.ToString() );
@@ -175,6 +133,48 @@ public class VideoHandler {
 		}
 
 		Console.WriteLine( "[RENDER] Done." );
+	}
+
+	private static class Helper {
+		public static List<string> WrapText( string text , SKPaint paint , float maxWidth ) {
+			var lines = new List<string>();
+
+			foreach ( var rawLine in text.Split( '\n' ) ) {
+				var words = rawLine.Split( ' ' );
+				var currentLine = "";
+
+				foreach ( var word in words ) {
+					var testLine = string.IsNullOrEmpty( currentLine )
+						? word
+						:currentLine + " " + word;
+
+					var linewidth = paint.MeasureText( testLine );
+
+					if ( linewidth <= maxWidth )
+						currentLine = testLine;
+					else {
+						if ( !string.IsNullOrEmpty( currentLine ) )
+							lines.Add( currentLine );
+
+						currentLine = word;
+					}
+				}
+
+				if ( !string.IsNullOrEmpty( currentLine ) )
+					lines.Add( currentLine );
+			}
+
+			return lines;
+		}
+
+		public static float Bounce( float t ) {
+			var amplitude = Config.Read<float>( "amplitude" );
+			var frequency = Config.Read<float>( "frequency" );
+			var decay = Config.Read<float>( "decay" );
+
+			var returned = (float)( Math.Sin( t * frequency ) * amplitude * Math.Exp( -t * decay ) );
+			return returned;
+		}
 	}
 }
 
