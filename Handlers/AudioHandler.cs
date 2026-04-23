@@ -9,11 +9,6 @@ namespace VN.Handlers;
 ///     DO WE NEED TO MAKE A BREATHING?
 /// </summary>
 public class AudioHandler {
-	private static readonly float minPitch      = Config.Read<float>( "minimum_pitch" );
-	private static readonly float maxPitch      = Config.Read<float>( "maximum_pitch" );
-	private static readonly float pitchModifier = Config.Read<float>( "pitch_modifier" );
-	public static           bool  IsUnpronounceable( char c ) => @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains( char.ToLowerInvariant( c ) );
-
 	public static string GenerateBlipTrack(
 		string text ,
 		string blipPath ,
@@ -28,12 +23,12 @@ public class AudioHandler {
 			var time = timeline[idx];
 
 			if ( char.IsWhiteSpace( c )
-			     || IsUnpronounceable( c )
+			     || _config.IsUnpronounceable( c )
 			   )
 				continue;
 
-			var pitch = minPitch + (float)rand.NextDouble() * pitchModifier;
-			pitch = Math.Clamp( pitch , minPitch , maxPitch );
+			var pitch = _config.minPitch + (float)rand.NextDouble() * _config.pitchModifier;
+			pitch = Math.Clamp( pitch , _config.minPitch , _config.maxPitch );
 
 			using var reader = new AudioFileReader( blipPath );
 			var provider = reader.ToSampleProvider();
@@ -66,6 +61,15 @@ public class AudioHandler {
 		foreach ( var s in output )
 			writer.WriteSample( Math.Clamp( s , -1f , 1f ) );
 
+		Console.Write( "[AUDIO DONE]" );
+
 		return path;
+	}
+
+	public class _config {
+		public static readonly float minPitch      = Config.Read<float>( "minimum_pitch" );
+		public static readonly float maxPitch      = Config.Read<float>( "maximum_pitch" );
+		public static readonly float pitchModifier = Config.Read<float>( "pitch_modifier" );
+		public static          bool  IsUnpronounceable( char c ) => @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains( char.ToLowerInvariant( c ) );
 	}
 }
