@@ -1,7 +1,7 @@
 ﻿namespace VN.Handlers;
 
-public class TimelineHandler {
-	public static List<double> BuildTimeline( string text , float charsPerSecond ) {
+public class Timeline {
+	public static List<double> Build( string text , float charsPerSecond ) {
 		var timeline = new List<double>();
 		double currentTime = 0;
 
@@ -19,7 +19,7 @@ public class TimelineHandler {
 
 			var mult = "aeiouаеёиоуыэюя".Contains( char.ToLowerInvariant( c ) )
 				? 1.2
-				:0.8;
+				: 0.8;
 			currentTime += 1.0 / charsPerSecond * mult;
 		}
 

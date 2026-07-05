@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using System.Diagnostics;
+using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
 namespace VN.Handlers;
@@ -8,29 +9,35 @@ namespace VN.Handlers;
 ///     DOES NOT SKIP EMOTICONS LIKE :3
 ///     DO WE NEED TO MAKE A BREATHING?
 /// </summary>
-public class AudioHandler {
+public static class Audio {
 	public static string GenerateBlipTrack(
 		string text ,
 		string blipPath ,
 		List<double> timeline
 	) {
+		var watch = Stopwatch.StartNew();
+
+		if ( blipPath == null || !File.Exists( blipPath ) )
+			return null;
+
 		var sampleRate = 44100;
 		var rand = new Random();
 		var output = new List<float>();
+
+		using var reader = new AudioFileReader( blipPath );
 
 		for ( var idx = 0 ; idx < text.Length ; idx++ ) {
 			var c = text[idx];
 			var time = timeline[idx];
 
-			if ( char.IsWhiteSpace( c )
-			     || _config.IsUnpronounceable( c )
-			   )
+			if ( char.IsWhiteSpace( c ) || _config.IsUnpronounceable( c ) )
 				continue;
+
+			reader.Position = 0;
 
 			var pitch = _config.minPitch + (float)rand.NextDouble() * _config.pitchModifier;
 			pitch = Math.Clamp( pitch , _config.minPitch , _config.maxPitch );
 
-			using var reader = new AudioFileReader( blipPath );
 			var provider = reader.ToSampleProvider();
 			var pitched = new WdlResamplingSampleProvider( provider , (int)( sampleRate * pitch ) );
 
@@ -61,15 +68,16 @@ public class AudioHandler {
 		foreach ( var s in output )
 			writer.WriteSample( Math.Clamp( s , -1f , 1f ) );
 
-		Console.Write( "[AUDIO DONE]" );
+		watch.Stop();
+		Program.Helper.Log( "Audio took " + watch.Elapsed );
 
 		return path;
 	}
 
 	public class _config {
-		public static readonly float minPitch      = Config.Read<float>( "minimum_pitch" );
-		public static readonly float maxPitch      = Config.Read<float>( "maximum_pitch" );
+		public static readonly float minPitch = Config.Read<float>( "minimum_pitch" );
+		public static readonly float maxPitch = Config.Read<float>( "maximum_pitch" );
 		public static readonly float pitchModifier = Config.Read<float>( "pitch_modifier" );
-		public static          bool  IsUnpronounceable( char c ) => @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains( char.ToLowerInvariant( c ) );
+		public static bool IsUnpronounceable( char c ) => @"@#$%^&*()-=+[]';/\|`~<>,.!?№:".Contains( char.ToLowerInvariant( c ) );
 	}
 }
